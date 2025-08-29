@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -6,225 +6,317 @@ import {
   Avatar,
   IconButton,
   InputAdornment,
-  Divider,
-  Badge,
-  Button,
   Chip,
-  Alert,
+  Badge,
 } from '@mui/material';
-import { Send, MoreVert, ArrowForward, Circle } from '@mui/icons-material';
-import { useSocket } from '../context/SocketContext';
-import { useAuth } from '../context/AuthContext';
+import {
+  Send,
+  MoreVert,
+  Circle,
+  ArrowForward,
+} from '@mui/icons-material';
+
+interface Message {
+  _id: string;
+  content: string;
+  type: string;
+  user: {
+    _id: string;
+    username: string;
+    role: string;
+  };
+  createdAt: string;
+}
+
+interface OnlineUser {
+  userId: string;
+  username: string;
+  role: string;
+}
+
+interface User {
+  _id: string;
+  username: string;
+  role: string;
+}
 
 const ChatPanel: React.FC = () => {
   const [message, setMessage] = useState('');
   const [aiMessage, setAiMessage] = useState('');
+  const [messages] = useState<Message[]>([
+    {
+      _id: '1',
+      content: 'Welcome to the team chat!',
+      type: 'text',
+      user: { _id: '1', username: 'Demo User', role: 'admin' },
+      createdAt: new Date().toISOString()
+    }
+  ]);
+  const [onlineUsers] = useState<OnlineUser[]>([
+    { userId: '1', username: 'Demo User', role: 'admin' },
+    { userId: '2', username: 'Test Member', role: 'member' }
+  ]);
+  const [isConnected] = useState(true);
+  const [canSendMessages] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { 
-    messages, 
-    onlineUsers, 
-    notifications, 
-    userPermissions,
-    sendMessage, 
-    isConnected,
-    markNotificationRead,
-    clearNotifications
-  } = useSocket();
-  const { user } = useAuth();
-  
-  // Mock workspace ID - in real app, get from workspace context
-  const currentWorkspaceId = '67234567890abcdef1234567';
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const user: User = {
+    _id: 'current',
+    username: 'Current User',
+    role: 'member'
   };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (message.trim() && isConnected) {
-      sendMessage(currentWorkspaceId, message);
+    if (message.trim() && isConnected && canSendMessages) {
+      // In real app, would send via socket
       setMessage('');
     }
   };
 
   const handleSendAiMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (aiMessage.trim() && isConnected) {
-      sendMessage(currentWorkspaceId, `@AI ${aiMessage}`, 'ai');
+    if (aiMessage.trim() && isConnected && canSendMessages) {
+      // In real app, would send to AI service
       setAiMessage('');
     }
   };
 
-  const canSendMessages = userPermissions.includes('send_message');
-  const connectionStatus = isConnected ? 'Connected' : 'Connecting...';
-  const statusColor = isConnected ? 'success' : 'warning';
-
   return (
     <Box sx={{ 
-      width: 300, 
-      bgcolor: 'white',
-      borderLeft: '1px solid #e2e8f0',
+      width: 320, 
+      background: 'linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%)',
+      backdropFilter: 'blur(20px)',
+      borderLeft: '1px solid rgba(59,130,246,0.1)',
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      boxShadow: 'inset 1px 0 0 rgba(255,255,255,0.2), -8px 0 32px rgba(59,130,246,0.1)'
     }}>
-      {/* Chat Header with Status */}
+      {/* Enhanced Chat Header */}
       <Box sx={{ 
-        p: 1.5, 
-        borderBottom: '1px solid #e2e8f0',
+        p: 2, 
+        borderBottom: '1px solid rgba(59,130,246,0.1)',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
+        background: 'linear-gradient(135deg, rgba(59,130,246,0.05), rgba(147,197,253,0.05))'
       }}>
-        <Typography variant="h6" sx={{ fontWeight: 600, fontSize: 16 }}>
-          Chat
+        <Typography variant="h6" sx={{ 
+          fontWeight: 700, 
+          fontSize: 18,
+          background: 'linear-gradient(45deg, #1f2937, #3b82f6)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent'
+        }}>
+          💬 Team Chat
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Chip
             icon={<Circle sx={{ fontSize: 8 }} />}
-            label={connectionStatus}
+            label={isConnected ? 'Live' : 'Connecting'}
             size="small"
-            color={statusColor}
-            variant="outlined"
-            sx={{ fontSize: 10, height: 20 }}
+            sx={{
+              background: isConnected 
+                ? 'linear-gradient(45deg, #10b981, #059669)' 
+                : 'linear-gradient(45deg, #f59e0b, #d97706)',
+              color: 'white',
+              fontWeight: 600,
+              fontSize: 11,
+              height: 24,
+              boxShadow: isConnected 
+                ? '0 2px 8px rgba(16,185,129,0.4)' 
+                : '0 2px 8px rgba(245,158,11,0.4)'
+            }}
           />
-          <Badge
-            badgeContent={notifications.length}
-            color="error"
-            sx={{ mr: 1 }}
-          >
-            <Typography variant="caption" color="text.secondary">
-              {onlineUsers.length} online
-            </Typography>
-          </Badge>
-          <IconButton size="small">
+          <IconButton size="small" sx={{ 
+            background: 'rgba(59,130,246,0.1)',
+            '&:hover': { background: 'rgba(59,130,246,0.2)' }
+          }}>
             <MoreVert />
           </IconButton>
         </Box>
       </Box>
 
-      {/* Notifications Panel */}
-      {notifications.length > 0 && (
-        <Box sx={{ p: 1, borderBottom: '1px solid #e2e8f0', maxHeight: 120, overflowY: 'auto' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-              Notifications ({notifications.length})
-            </Typography>
-            <Button size="small" onClick={clearNotifications} sx={{ minWidth: 'auto', p: 0.5 }}>
-              Clear
-            </Button>
-          </Box>
-          {notifications.slice(0, 3).map((notification, index) => (
-            <Alert
-              key={index}
-              severity={notification.type === 'error' ? 'error' : 'info'}
-              onClose={() => markNotificationRead(index)}
-              sx={{ mb: 0.5, fontSize: 10, p: 0.5 }}
-            >
-              <Typography variant="caption" sx={{ fontSize: 10 }}>
-                <strong>{notification.title}:</strong> {notification.message}
-              </Typography>
-            </Alert>
-          ))}
-        </Box>
-      )}
-
-      {/* Online Users */}
-      <Box sx={{ p: 1, borderBottom: '1px solid #e2e8f0' }}>
-        <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
-          Online ({onlineUsers.length})
+      {/* Enhanced Online Users Section */}
+      <Box sx={{ 
+        p: 2, 
+        borderBottom: '1px solid rgba(59,130,246,0.1)',
+        background: 'linear-gradient(135deg, rgba(248,250,252,0.8), rgba(255,255,255,0.4))'
+      }}>
+        <Typography variant="caption" sx={{ 
+          mb: 1.5, 
+          display: 'block',
+          fontWeight: 700,
+          color: '#64748b',
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px'
+        }}>
+          Online ({onlineUsers.length + 1})
         </Typography>
-        <Box sx={{ display: 'flex', gap: 0.5, overflowX: 'auto' }}>
-          {onlineUsers.map((onlineUser) => (
-            <Box key={onlineUser.userId} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 40 }}>
-              <Avatar
-                sx={{ 
-                  width: 20, 
-                  height: 20, 
-                  fontSize: 10, 
-                  bgcolor: onlineUser.role === 'admin' ? '#f59e0b' : '#3b82f6' 
-                }}
-                title={`${onlineUser.username} (${onlineUser.role})`}
-              >
+        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+          {/* Current user with special styling */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <Avatar sx={{ 
+              width: 32, 
+              height: 32, 
+              fontSize: 12,
+              background: 'linear-gradient(45deg, #8b5cf6, #7c3aed)',
+              border: '3px solid #10b981',
+              boxShadow: '0 0 0 2px rgba(16,185,129,0.3), 0 4px 12px rgba(139,92,246,0.4)',
+              position: 'relative',
+              '&:after': {
+                content: '""',
+                position: 'absolute',
+                bottom: -2,
+                right: -2,
+                width: 12,
+                height: 12,
+                borderRadius: '50%',
+                background: '#10b981',
+                border: '2px solid white'
+              }
+            }}>
+              {user?.username?.charAt(0) || 'Y'}
+            </Avatar>
+            <Typography variant="caption" sx={{ 
+              fontSize: 9, 
+              fontWeight: 700,
+              color: '#8b5cf6',
+              mt: 0.5
+            }}>
+              You
+            </Typography>
+          </Box>
+          
+          {/* Other users */}
+          {onlineUsers.slice(0, 5).map((onlineUser, index) => (
+            <Box key={onlineUser.userId} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <Avatar sx={{ 
+                width: 32, 
+                height: 32, 
+                fontSize: 12,
+                background: `linear-gradient(45deg, ${
+                  onlineUser.role === 'admin' ? '#f59e0b, #d97706' : '#3b82f6, #2563eb'
+                })`,
+                boxShadow: `0 4px 12px rgba(${
+                  onlineUser.role === 'admin' ? '245,158,11' : '59,130,246'
+                },0.4)`,
+                border: '2px solid rgba(255,255,255,0.8)'
+              }}>
                 {onlineUser.username.charAt(0).toUpperCase()}
               </Avatar>
-              <Typography variant="caption" sx={{ fontSize: 8, textAlign: 'center' }}>
-                {onlineUser.role}
+              <Typography variant="caption" sx={{ 
+                fontSize: 9, 
+                fontWeight: 600,
+                color: onlineUser.role === 'admin' ? '#d97706' : '#3b82f6',
+                mt: 0.5
+              }}>
+                {onlineUser.username.length > 6 ? 
+                  onlineUser.username.substring(0, 6) + '...' : 
+                  onlineUser.username}
               </Typography>
             </Box>
           ))}
         </Box>
       </Box>
 
-      {/* Permission Warning */}
-      {!canSendMessages && (
-        <Box sx={{ p: 1, bgcolor: '#fef3c7', borderBottom: '1px solid #e2e8f0' }}>
-          <Typography variant="caption" color="warning.main" sx={{ fontSize: 11 }}>
-            ⚠️ You don't have permission to send messages
-          </Typography>
-        </Box>
-      )}
-
-      {/* Messages */}
-      <Box sx={{ flexGrow: 1, p: 1.5, overflow: 'auto', maxHeight: 280 }}>
+      {/* Enhanced Messages Area */}
+      <Box sx={{ 
+        flexGrow: 1, 
+        p: 2, 
+        overflow: 'auto', 
+        maxHeight: 400,
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.4), rgba(248,250,252,0.6))'
+      }}>
         {messages.length === 0 ? (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <Typography variant="body2" color="text.secondary">
-              {isConnected ? 'No messages yet. Start the conversation!' : 'Connecting to chat...'}
+          <Box sx={{ 
+            textAlign: 'center', 
+            py: 6,
+            background: 'linear-gradient(135deg, rgba(59,130,246,0.05), rgba(147,197,253,0.05))',
+            borderRadius: '16px',
+            border: '2px dashed rgba(59,130,246,0.2)'
+          }}>
+            <Typography variant="body2" sx={{ 
+              color: '#64748b',
+              fontWeight: 600,
+              fontSize: 16,
+              mb: 1
+            }}>
+              {isConnected ? '🎉 Ready to chat!' : '⏳ Connecting...'}
+            </Typography>
+            <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+              Start your conversation here
             </Typography>
           </Box>
         ) : (
           messages.map((msg) => (
-            <Box key={msg._id} sx={{ display: 'flex', mb: 2 }}>
+            <Box key={msg._id} sx={{ 
+              display: 'flex', 
+              mb: 3,
+              background: 'rgba(255,255,255,0.6)',
+              backdropFilter: 'blur(10px)',
+              p: 2,
+              borderRadius: '16px',
+              border: '1px solid rgba(255,255,255,0.3)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                transform: 'translateY(-2px)',
+                boxShadow: '0 8px 25px rgba(59,130,246,0.15)',
+              }
+            }}>
               <Avatar sx={{ 
-                width: 28, 
-                height: 28, 
-                mr: 1.5, 
-                fontSize: 12, 
-                bgcolor: msg.user.role === 'admin' ? '#f59e0b' : '#3b82f6' 
+                width: 36, 
+                height: 36, 
+                mr: 2, 
+                fontSize: 14,
+                background: `linear-gradient(45deg, ${
+                  msg.user.role === 'admin' ? '#f59e0b, #d97706' : '#3b82f6, #2563eb'
+                })`,
+                boxShadow: `0 4px 12px rgba(${
+                  msg.user.role === 'admin' ? '245,158,11' : '59,130,246'
+                },0.4)`
               }}>
                 {msg.user.username.charAt(0).toUpperCase()}
               </Avatar>
               <Box sx={{ flexGrow: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.3, flexWrap: 'wrap' }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, mr: 1, fontSize: 12 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, flexWrap: 'wrap', gap: 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 700, fontSize: 14 }}>
                     {msg.user.username}
                   </Typography>
                   <Chip
                     label={msg.user.role}
                     size="small"
                     sx={{ 
-                      height: 14, 
-                      fontSize: 8, 
-                      mr: 0.5,
-                      bgcolor: msg.user.role === 'admin' ? '#fef3c7' : '#dbeafe',
-                      color: msg.user.role === 'admin' ? '#f59e0b' : '#3b82f6'
+                      height: 18, 
+                      fontSize: 9,
+                      fontWeight: 700,
+                      background: `linear-gradient(45deg, ${
+                        msg.user.role === 'admin' ? 
+                        'rgba(245,158,11,0.1), rgba(217,119,6,0.1)' : 
+                        'rgba(59,130,246,0.1), rgba(37,99,235,0.1)'
+                      })`,
+                      color: msg.user.role === 'admin' ? '#d97706' : '#2563eb',
+                      border: `1px solid ${msg.user.role === 'admin' ? '#f59e0b' : '#3b82f6'}`
                     }}
                   />
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10 }}>
+                  <Typography variant="caption" sx={{ 
+                    color: '#94a3b8',
+                    fontSize: 11,
+                    fontWeight: 500
+                  }}>
                     {new Date(msg.createdAt).toLocaleTimeString([], { 
                       hour: '2-digit', 
                       minute: '2-digit' 
                     })}
                   </Typography>
-                  {msg.type === 'ai' && (
-                    <Typography variant="caption" sx={{ 
-                      ml: 0.5, 
-                      px: 0.5, 
-                      py: 0.1, 
-                      bgcolor: '#f0f9ff', 
-                      color: '#3b82f6',
-                      borderRadius: 0.5,
-                      fontSize: 9
-                    }}>
-                      AI
-                    </Typography>
-                  )}
                 </Box>
-                <Typography variant="body2" color="text.secondary" sx={{ fontSize: 12, wordBreak: 'break-word' }}>
+                <Typography variant="body2" sx={{ 
+                  fontSize: 14, 
+                  wordBreak: 'break-word',
+                  lineHeight: 1.6,
+                  color: '#374151'
+                }}>
                   {msg.content}
                 </Typography>
               </Box>
@@ -234,17 +326,20 @@ const ChatPanel: React.FC = () => {
         <div ref={messagesEndRef} />
       </Box>
 
-      {/* Message Input */}
-      <Box sx={{ p: 1.5, borderTop: '1px solid #e2e8f0' }}>
+      {/* Enhanced Message Input */}
+      <Box sx={{ 
+        p: 2, 
+        borderTop: '1px solid rgba(59,130,246,0.1)',
+        background: 'linear-gradient(135deg, rgba(255,255,255,0.8), rgba(248,250,252,0.8))',
+        backdropFilter: 'blur(10px)'
+      }}>
         <form onSubmit={handleSendMessage}>
           <TextField
             fullWidth
             placeholder={
-              !isConnected 
-                ? "Connecting..." 
-                : !canSendMessages 
-                ? "No permission to send messages" 
-                : "Type a message..."
+              !isConnected ? "Connecting..." : 
+              !canSendMessages ? "View only mode" : 
+              "💭 Type your message..."
             }
             value={message}
             onChange={(e) => setMessage(e.target.value)}
@@ -252,8 +347,22 @@ const ChatPanel: React.FC = () => {
             size="small"
             sx={{ 
               '& .MuiOutlinedInput-root': {
-                bgcolor: (isConnected && canSendMessages) ? '#f8fafc' : '#f1f5f9',
-                fontSize: 13,
+                background: 'rgba(255,255,255,0.8)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: '25px',
+                fontSize: 14,
+                border: '2px solid rgba(59,130,246,0.1)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  background: 'rgba(255,255,255,0.9)',
+                  borderColor: 'rgba(59,130,246,0.3)',
+                },
+                '&.Mui-focused': {
+                  background: 'white',
+                  borderColor: '#3b82f6',
+                  boxShadow: '0 0 0 4px rgba(59,130,246,0.1)'
+                },
+                '& fieldset': { border: 'none' },
               }
             }}
             InputProps={{
@@ -261,34 +370,93 @@ const ChatPanel: React.FC = () => {
                 <InputAdornment position="end">
                   <IconButton 
                     size="small" 
-                    sx={{ color: '#3b82f6' }}
                     type="submit"
                     disabled={!isConnected || !message.trim() || !canSendMessages}
+                    sx={{ 
+                      background: message.trim() && isConnected && canSendMessages ? 
+                        'linear-gradient(45deg, #3b82f6, #2563eb)' : 
+                        'rgba(156,163,175,0.3)',
+                      color: 'white',
+                      width: 32,
+                      height: 32,
+                      boxShadow: message.trim() && isConnected && canSendMessages ? 
+                        '0 4px 12px rgba(59,130,246,0.4)' : 'none',
+                      '&:hover': {
+                        background: message.trim() && isConnected && canSendMessages ? 
+                          'linear-gradient(45deg, #2563eb, #1d4ed8)' : 
+                          'rgba(156,163,175,0.4)',
+                        transform: message.trim() && isConnected && canSendMessages ? 
+                          'scale(1.1)' : 'none'
+                      },
+                      transition: 'all 0.3s ease'
+                    }}
                   >
-                    <Send fontSize="small" />
+                    <Send sx={{ fontSize: 16 }} />
                   </IconButton>
                 </InputAdornment>
               ),
             }}
           />
         </form>
+        
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          mt: 1.5,
+          px: 1
+        }}>
+          <Typography variant="caption" sx={{ 
+            color: '#94a3b8',
+            fontSize: 11,
+            fontWeight: 500
+          }}>
+            Press Enter to send • {isConnected ? '🟢 Connected' : '🟡 Connecting'}
+          </Typography>
+          
+          <Box sx={{ 
+            display: 'flex', 
+            gap: 0.5,
+            alignItems: 'center'
+          }}>
+            <Typography variant="caption" sx={{ 
+              color: '#64748b',
+              fontSize: 10
+            }}>
+              {onlineUsers.length + 1} online
+            </Typography>
+          </Box>
+        </Box>
       </Box>
 
-      <Divider />
-
-      {/* AI Assistant */}
-      <Box sx={{ p: 1.5 }}>
+      {/* Enhanced AI Assistant Section */}
+      <Box sx={{ 
+        p: 2,
+        background: 'linear-gradient(135deg, rgba(139,92,246,0.05), rgba(124,58,237,0.05))',
+        backdropFilter: 'blur(10px)',
+        borderTop: '1px solid rgba(139,92,246,0.1)'
+      }}>
         <Box sx={{ 
           display: 'flex', 
           alignItems: 'center',
           justifyContent: 'space-between',
-          mb: 1.5
+          mb: 2
         }}>
-          <Typography variant="h6" sx={{ fontWeight: 600, fontSize: 15 }}>
-            AI Assistant
+          <Typography variant="h6" sx={{ 
+            fontWeight: 700, 
+            fontSize: 16,
+            background: 'linear-gradient(45deg, #8b5cf6, #7c3aed)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent'
+          }}>
+            🤖 AI Assistant
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            🤖
+          <Typography variant="body2" sx={{ 
+            color: '#8b5cf6',
+            fontSize: 12,
+            fontWeight: 600
+          }}>
+            Beta
           </Typography>
         </Box>
         
@@ -296,21 +464,30 @@ const ChatPanel: React.FC = () => {
           <TextField
             fullWidth
             placeholder={
-              !isConnected 
-                ? "Offline" 
-                : !canSendMessages 
-                ? "No permission" 
-                : "Ask AI anything..."
+              !isConnected ? "Offline" : 
+              !canSendMessages ? "Access denied" : 
+              "✨ Ask AI anything..."
             }
             value={aiMessage}
             onChange={(e) => setAiMessage(e.target.value)}
             disabled={!isConnected || !canSendMessages}
             size="small"
             sx={{ 
-              mb: 1.5,
+              mb: 2,
               '& .MuiOutlinedInput-root': {
-                bgcolor: (isConnected && canSendMessages) ? '#f8fafc' : '#f1f5f9',
+                background: 'rgba(255,255,255,0.7)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: '16px',
                 fontSize: 13,
+                border: '2px solid rgba(139,92,246,0.2)',
+                '&:hover': {
+                  borderColor: 'rgba(139,92,246,0.4)',
+                },
+                '&.Mui-focused': {
+                  borderColor: '#8b5cf6',
+                  boxShadow: '0 0 0 4px rgba(139,92,246,0.1)'
+                },
+                '& fieldset': { border: 'none' }
               }
             }}
           />
@@ -320,34 +497,86 @@ const ChatPanel: React.FC = () => {
           display: 'flex', 
           alignItems: 'center',
           justifyContent: 'space-between',
-          bgcolor: '#f0f9ff',
-          p: 1.5,
-          borderRadius: 1,
-          border: '1px solid #bfdbfe'
+          background: 'linear-gradient(135deg, rgba(139,92,246,0.1), rgba(124,58,237,0.1))',
+          backdropFilter: 'blur(10px)',
+          p: 2,
+          borderRadius: '16px',
+          border: '2px solid rgba(139,92,246,0.2)',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease',
+          '&:hover': {
+            transform: 'translateY(-2px)',
+            boxShadow: '0 8px 25px rgba(139,92,246,0.2)',
+            borderColor: 'rgba(139,92,246,0.4)'
+          }
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Avatar sx={{ width: 20, height: 20, mr: 1, bgcolor: '#3b82f6' }}>
-              🤖
+            <Avatar sx={{ 
+              width: 28, 
+              height: 28, 
+              mr: 1.5,
+              background: 'linear-gradient(45deg, #8b5cf6, #7c3aed)',
+              fontSize: 14,
+              boxShadow: '0 4px 12px rgba(139,92,246,0.4)'
+            }}>
+              🧠
             </Avatar>
-            <Typography variant="body2" sx={{ fontWeight: 500, fontSize: 13 }}>
-              AI Assistant
+            <Typography variant="body2" sx={{ 
+              fontWeight: 600, 
+              fontSize: 13,
+              color: '#7c3aed'
+            }}>
+              Smart Assistant
             </Typography>
           </Box>
           <IconButton 
             size="small" 
-            sx={{ color: '#3b82f6' }}
             onClick={handleSendAiMessage}
             disabled={!isConnected || !aiMessage.trim() || !canSendMessages}
+            sx={{ 
+              background: 'linear-gradient(45deg, #8b5cf6, #7c3aed)',
+              color: 'white',
+              width: 28,
+              height: 28,
+              '&:hover': {
+                background: 'linear-gradient(45deg, #7c3aed, #6d28d9)',
+                transform: 'scale(1.1)'
+              },
+              '&:disabled': {
+                background: 'rgba(156,163,175,0.3)',
+                color: 'rgba(156,163,175,0.6)'
+              }
+            }}
           >
-            <ArrowForward fontSize="small" />
+            <ArrowForward sx={{ fontSize: 14 }} />
           </IconButton>
         </Box>
 
-        {/* User Info */}
-        <Box sx={{ mt: 1, p: 1, bgcolor: '#f8fafc', borderRadius: 1 }}>
-          <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10 }}>
-            You: {user?.username} ({user?.role})
-            {canSendMessages ? ' ✅ Can chat' : ' ❌ View only'}
+        {/* User Info Card */}
+        <Box sx={{ 
+          mt: 2, 
+          p: 1.5, 
+          background: 'rgba(255,255,255,0.6)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: '12px',
+          border: '1px solid rgba(255,255,255,0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <Typography variant="caption" sx={{ 
+            fontSize: 11,
+            fontWeight: 600,
+            color: '#64748b'
+          }}>
+            👤 {user?.username || 'Guest'} ({user?.role || 'viewer'})
+          </Typography>
+          <Typography variant="caption" sx={{ 
+            fontSize: 10,
+            color: canSendMessages ? '#10b981' : '#ef4444',
+            fontWeight: 700
+          }}>
+            {canSendMessages ? '✅ Active' : '👁️ View Only'}
           </Typography>
         </Box>
       </Box>
