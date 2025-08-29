@@ -127,9 +127,6 @@
 ### Dashboard Overview
 ![Dashboard](screenshots/dashboard.png)
 
-### Task Management Board
-![Kanban Board](screenshots/Taskmanagement.png)
-
 ### Code Editor
 ![Code Editor](screenshots/editor.png)
 
