@@ -128,13 +128,10 @@
 ![Dashboard](screenshots/dashboard.png)
 
 ### Task Management Board
-![Kanban Board](screenshots/kanban.png)
+![Kanban Board](screenshots/Taskmanagement.png)
 
 ### Code Editor
 ![Code Editor](screenshots/editor.png)
-
-### Team Chat
-![Chat Panel](screenshots/chat.png)
 
 ### Analytics
 ![Analytics](screenshots/analytics.png)
