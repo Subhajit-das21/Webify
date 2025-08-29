@@ -1,14 +1,15 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Workspace = require('../models/Workspace');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
 
-// Register
+// Register with role selection
 router.post('/register', async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, role = 'member' } = req.body;
 
     // Check if user exists
     const existingUser = await User.findOne({ 
@@ -21,18 +22,22 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // Create user
+    // Create user with role
     const user = new User({
       username,
       email,
-      password
+      password,
+      role: ['admin', 'member', 'viewer', 'code-contributor'].includes(role) ? role : 'member'
     });
 
     await user.save();
 
-    // Generate token
+    // Generate token with role
     const token = jwt.sign(
-      { userId: user._id },
+      { 
+        userId: user._id,
+        role: user.role 
+      },
       process.env.JWT_SECRET || 'fallback-secret',
       { expiresIn: '7d' }
     );
@@ -40,7 +45,13 @@ router.post('/register', async (req, res) => {
     res.status(201).json({
       message: 'User created successfully',
       token,
-      user
+      user: {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar
+      }
     });
   } catch (error) {
     console.error('Register error:', error);
@@ -48,18 +59,16 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Login
+// Login with role info
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Check if user exists
     const user = await User.findOne({ email }).populate('workspaces.workspace');
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    // Check password
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
       return res.status(400).json({ message: 'Invalid credentials' });
@@ -70,9 +79,12 @@ router.post('/login', async (req, res) => {
     user.lastSeen = new Date();
     await user.save();
 
-    // Generate token
+    // Generate token with role
     const token = jwt.sign(
-      { userId: user._id },
+      { 
+        userId: user._id,
+        role: user.role 
+      },
       process.env.JWT_SECRET || 'fallback-secret',
       { expiresIn: '7d' }
     );
@@ -80,7 +92,14 @@ router.post('/login', async (req, res) => {
     res.json({
       message: 'Login successful',
       token,
-      user
+      user: {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        workspaces: user.workspaces
+      }
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -99,27 +118,36 @@ router.get('/me', auth, async (req, res) => {
   }
 });
 
-// Update user profile
-router.put('/profile', auth, async (req, res) => {
+// Update user role (admin only)
+router.put('/role/:userId', auth, async (req, res) => {
   try {
-    const { username, avatar, preferences } = req.body;
-    
+    // Check if current user is admin
+    const currentUser = await User.findById(req.userId);
+    if (currentUser.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied. Admin only.' });
+    }
+
+    const { role } = req.body;
+    if (!['admin', 'member', 'viewer', 'code-contributor'].includes(role)) {
+      return res.status(400).json({ message: 'Invalid role' });
+    }
+
     const user = await User.findByIdAndUpdate(
-      req.userId,
-      { 
-        ...(username && { username }),
-        ...(avatar && { avatar }),
-        ...(preferences && { preferences })
-      },
+      req.params.userId,
+      { role },
       { new: true }
     );
 
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
     res.json({
-      message: 'Profile updated successfully',
+      message: 'Role updated successfully',
       user
     });
   } catch (error) {
-    console.error('Update profile error:', error);
+    console.error('Update role error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
